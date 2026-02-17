@@ -3,238 +3,217 @@ import {
   Alert,
   Box,
   Button,
-  Card,
-  CardContent,
   CircularProgress,
-  Stack,
+  MenuItem,
+  Rating,
+  Select,
+  Snackbar,
   TextField,
   Typography,
-  MenuItem,
-  Rating
 } from "@mui/material";
 import { submitFeedback } from "../api";
 
+const DEPARTMENTS = ["Engineering", "Product", "Design", "Marketing", "Sales", "HR", "Finance", "Operations"];
+const REVIEW_PERIODS = ["Q1 2025", "Q2 2025", "Q3 2025", "Q4 2025", "Q1 2026", "Q2 2026"];
+
+const inputSx = {
+  "& .MuiOutlinedInput-root": {
+    background: "rgba(255,255,255,0.05)",
+    borderRadius: "12px",
+    fontFamily: "'DM Mono', monospace",
+    fontSize: "14px",
+    color: "rgba(255,255,255,0.9)",
+    "& fieldset": { borderColor: "rgba(255,255,255,0.1)" },
+    "&:hover fieldset": { borderColor: "rgba(139,92,246,0.5)" },
+    "&.Mui-focused fieldset": { borderColor: "#8b5cf6" },
+  },
+  "& .MuiInputLabel-root": {
+    color: "rgba(255,255,255,0.4)",
+    fontFamily: "'DM Mono', monospace",
+    fontSize: "13px",
+  },
+  "& .MuiInputLabel-root.Mui-focused": { color: "#8b5cf6" },
+  "& .MuiSelect-icon": { color: "rgba(255,255,255,0.4)" },
+};
+
+const menuProps = {
+  PaperProps: {
+    sx: {
+      background: "#1a1030",
+      border: "1px solid rgba(139,92,246,0.3)",
+      borderRadius: "12px",
+      "& .MuiMenuItem-root": {
+        fontFamily: "'DM Mono', monospace",
+        fontSize: "13px",
+        color: "rgba(255,255,255,0.8)",
+        "&:hover": { background: "rgba(139,92,246,0.15)" },
+      },
+    },
+  },
+};
+
+const selectSx = {
+  borderRadius: "12px",
+  background: "rgba(255,255,255,0.05)",
+  fontFamily: "'DM Mono', monospace",
+  fontSize: "13px",
+  "& .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(255,255,255,0.1)" },
+  "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(139,92,246,0.5)" },
+  "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "#8b5cf6" },
+  "& .MuiSvgIcon-root": { color: "rgba(255,255,255,0.4)" },
+};
+
+function SectionLabel({ text }: { text: string }) {
+  return (
+    <Box sx={{ display: "flex", alignItems: "center", gap: "8px" }}>
+      <Box sx={{ width: 3, height: 14, borderRadius: "2px", background: "linear-gradient(180deg, #8b5cf6, #ec4899)" }} />
+      <Typography sx={{ fontSize: "10px", letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)", fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>
+        {text}
+      </Typography>
+    </Box>
+  );
+}
+
 const FeedbackPage: React.FC = () => {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [department, setDepartment] = useState("");
-  const [reviewPeriod, setReviewPeriod] = useState("");
-  const [rating, setRating] = useState<number | null>(3);
-  const [strengths, setStrengths] = useState("");
-  const [improvements, setImprovements] = useState("");
-
+  const [form, setForm] = useState({
+    reviewerName: "", reviewerEmail: "", employeeName: "",
+    department: "", reviewPeriod: "", rating: 3, strengths: "", improvements: "",
+  });
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const [error, setError]     = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setSuccess(null);
+  const set = (field: string, value: any) => setForm(f => ({ ...f, [field]: value }));
 
-    if (!name || !email || !strengths) {
-      setError("Please fill out required fields.");
+  const handleSubmit = async () => {
+    if (!form.reviewerName || !form.reviewerEmail || !form.employeeName || !form.strengths) {
+      setError("Please fill in all required fields.");
       return;
     }
-
-    const fullMessage = `
-Department: ${department}
-Review Period: ${reviewPeriod}
-Overall Rating: ${rating}/5
-
-Strengths:
-${strengths}
-
-Areas for Improvement:
-${improvements}
-`;
-
     try {
       setLoading(true);
-      await submitFeedback({ name, email, message: fullMessage });
-      setSuccess("Review submitted successfully.");
-
-      setName("");
-      setEmail("");
-      setDepartment("");
-      setReviewPeriod("");
-      setRating(3);
-      setStrengths("");
-      setImprovements("");
+      setError(null);
+      const message = `Employee: ${form.employeeName}. Department: ${form.department || "N/A"}. Period: ${form.reviewPeriod || "N/A"}. Rating: ${form.rating}/5. Strengths: ${form.strengths}. Areas for improvement: ${form.improvements || "None specified."}`;
+      await submitFeedback({
+        name: form.reviewerName,
+        email: form.reviewerEmail,
+        employeeName: form.employeeName,
+        department: form.department,
+        reviewPeriod: form.reviewPeriod,
+        rating: form.rating,
+        message,
+      });
+      setSuccess(true);
+      setForm({ reviewerName: "", reviewerEmail: "", employeeName: "", department: "", reviewPeriod: "", rating: 3, strengths: "", improvements: "" });
     } catch (err: any) {
-      setError(
-        err?.response?.data?.message ||
-          "Failed to submit feedback. Please try again."
-      );
+      setError(err?.response?.data?.message || "Submission failed. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Box maxWidth={700} width="100%">
-      <Typography
-        variant="h4"
-        gutterBottom
-        sx={{
-          fontWeight: 600,
-          textAlign: "center",
+    <>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&display=swap');`}</style>
+      <Box sx={{ maxWidth: 580, mx: "auto" }}>
+        <Typography variant="h4" sx={{
+          fontWeight: 800, mb: "8px", textAlign: "center",
           background: "linear-gradient(90deg, #8b5cf6, #ec4899)",
-          WebkitBackgroundClip: "text",
-          WebkitTextFillColor: "transparent"
-        }}
-      >
-        Performance Review Submission
-      </Typography>
+          WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+        }}>
+          Performance Review Submission
+        </Typography>
+        <Typography sx={{ color: "rgba(255,255,255,0.4)", fontSize: "13px", textAlign: "center", mb: "36px", fontFamily: "'DM Mono', monospace" }}>
+          Submit a structured review for a team member
+        </Typography>
 
-      <Card
-        sx={{
+        <Box sx={{
+          background: "rgba(255,255,255,0.04)",
+          border: "1px solid rgba(255,255,255,0.08)",
+          borderRadius: "20px", p: { xs: "24px", md: "32px" },
           backdropFilter: "blur(20px)",
-          background: "rgba(255, 255, 255, 0.08)",
-          borderRadius: 4,
-          border: "1px solid rgba(255,255,255,0.1)",
-          boxShadow: "0 8px 32px rgba(0, 0, 0, 0.4)"
-        }}
-      >
-        <CardContent>
-          <form onSubmit={handleSubmit}>
-            <Stack spacing={3}>
-              {success && <Alert severity="success">{success}</Alert>}
-              {error && <Alert severity="error">{error}</Alert>}
+          display: "flex", flexDirection: "column", gap: "18px",
+        }}>
+          <SectionLabel text="Reviewer" />
+          <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+            <TextField label="Reviewer Name *" value={form.reviewerName} onChange={e => set("reviewerName", e.target.value)} fullWidth sx={inputSx} />
+            <TextField label="Reviewer Email *" value={form.reviewerEmail} onChange={e => set("reviewerEmail", e.target.value)} fullWidth sx={inputSx} />
+          </Box>
 
-              <TextField
-                label="Reviewer Name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                fullWidth
-                required
-              />
+          <Box sx={{ height: "1px", background: "rgba(255,255,255,0.06)" }} />
+          <SectionLabel text="Employee Being Reviewed" />
 
-              <TextField
-                label="Reviewer Email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                fullWidth
-                required
-              />
+          <TextField
+            label="Employee Name *" value={form.employeeName}
+            onChange={e => set("employeeName", e.target.value)}
+            fullWidth sx={inputSx} placeholder="Full name of the employee"
+          />
 
-              {/* Department Dropdown (Opaque Menu) */}
-              <TextField
-                select
-                label="Department"
-                value={department}
-                onChange={(e) => setDepartment(e.target.value)}
-                fullWidth
-                SelectProps={{
-                  MenuProps: {
-                    PaperProps: {
-                      sx: {
-                        backgroundColor: "#1e1b4b", // solid dark
-                        color: "#fff"
-                      }
-                    }
-                  }
-                }}
-              >
-                {["Engineering", "HR", "Marketing", "Sales", "Operations"].map(
-                  (option) => (
-                    <MenuItem key={option} value={option}>
-                      {option}
-                    </MenuItem>
-                  )
-                )}
-              </TextField>
+          <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+            <Select
+              value={form.department} onChange={e => set("department", e.target.value)}
+              displayEmpty fullWidth MenuProps={menuProps}
+              sx={{ ...selectSx, color: form.department ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.4)" }}
+              renderValue={v => v || <span style={{ color: "rgba(255,255,255,0.35)", fontFamily: "'DM Mono', monospace", fontSize: "13px" }}>Department</span>}
+            >
+              {DEPARTMENTS.map(d => <MenuItem key={d} value={d}>{d}</MenuItem>)}
+            </Select>
+            <Select
+              value={form.reviewPeriod} onChange={e => set("reviewPeriod", e.target.value)}
+              displayEmpty fullWidth MenuProps={menuProps}
+              sx={{ ...selectSx, color: form.reviewPeriod ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.4)" }}
+              renderValue={v => v || <span style={{ color: "rgba(255,255,255,0.35)", fontFamily: "'DM Mono', monospace", fontSize: "13px" }}>Review Period</span>}
+            >
+              {REVIEW_PERIODS.map(p => <MenuItem key={p} value={p}>{p}</MenuItem>)}
+            </Select>
+          </Box>
 
-              {/* Review Period Dropdown (Selectable) */}
-              <TextField
-                select
-                label="Review Period"
-                value={reviewPeriod}
-                onChange={(e) => setReviewPeriod(e.target.value)}
-                fullWidth
-                SelectProps={{
-                  MenuProps: {
-                    PaperProps: {
-                      sx: {
-                        backgroundColor: "#1e1b4b",
-                        color: "#fff"
-                      }
-                    }
-                  }
-                }}
-              >
-                {[
-                  "Q1 2026",
-                  "Q2 2026",
-                  "Q3 2026",
-                  "Q4 2026",
-                  "Annual 2025",
-                  "Annual 2026"
-                ].map((option) => (
-                  <MenuItem key={option} value={option}>
-                    {option}
-                  </MenuItem>
-                ))}
-              </TextField>
+          <Box sx={{ height: "1px", background: "rgba(255,255,255,0.06)" }} />
+          <SectionLabel text="Review" />
 
-              <Box>
-                <Typography gutterBottom>
-                  Overall Performance Rating
-                </Typography>
-                <Rating
-                  value={rating}
-                  onChange={(event, newValue) => setRating(newValue)}
-                />
-              </Box>
+          <Box>
+            <Typography sx={{ fontSize: "11px", letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)", mb: "10px", fontFamily: "'DM Mono', monospace" }}>
+              Overall Performance Rating
+            </Typography>
+            <Rating
+              value={form.rating} onChange={(_, v) => set("rating", v || 1)}
+              sx={{ "& .MuiRating-iconFilled": { color: "#8b5cf6" }, "& .MuiRating-iconEmpty": { color: "rgba(255,255,255,0.15)" } }}
+            />
+          </Box>
 
-              <TextField
-                label="Key Strengths"
-                value={strengths}
-                onChange={(e) => setStrengths(e.target.value)}
-                multiline
-                minRows={3}
-                fullWidth
-                required
-              />
+          <TextField label="Key Strengths *" value={form.strengths} onChange={e => set("strengths", e.target.value)} multiline rows={3} fullWidth sx={inputSx} placeholder="What does this employee do exceptionally well?" />
+          <TextField label="Areas for Improvement" value={form.improvements} onChange={e => set("improvements", e.target.value)} multiline rows={3} fullWidth sx={inputSx} placeholder="What should this employee focus on developing?" />
 
-              <TextField
-                label="Areas for Improvement"
-                value={improvements}
-                onChange={(e) => setImprovements(e.target.value)}
-                multiline
-                minRows={3}
-                fullWidth
-              />
+          {error && (
+            <Alert severity="error" sx={{ background: "rgba(236,72,153,0.1)", color: "#ec4899", border: "1px solid rgba(236,72,153,0.3)", borderRadius: "10px", fontFamily: "'DM Mono', monospace", fontSize: "13px" }}>
+              {error}
+            </Alert>
+          )}
 
-              <Box display="flex" justifyContent="flex-end">
-                <Button
-                  type="submit"
-                  disabled={loading}
-                  sx={{
-                    borderRadius: 2,
-                    px: 4,
-                    py: 1.2,
-                    fontWeight: 600,
-                    color: "#fff",
-                    background: "#6d28d9",
-                    "&:hover": {
-                      background: "#5b21b6"
-                    }
-                  }}
-                >
-                  {loading ? (
-                    <CircularProgress size={20} sx={{ color: "#fff" }} />
-                  ) : (
-                    "Submit Review"
-                  )}
-                </Button>
-              </Box>
-            </Stack>
-          </form>
-        </CardContent>
-      </Card>
-    </Box>
+          <Button
+            onClick={handleSubmit} disabled={loading} fullWidth
+            sx={{
+              mt: "4px", py: "14px", borderRadius: "12px",
+              background: "linear-gradient(90deg, #8b5cf6, #ec4899)",
+              color: "#fff", fontWeight: 700, fontSize: "13px",
+              letterSpacing: "0.08em", textTransform: "uppercase",
+              fontFamily: "'DM Mono', monospace",
+              transition: "opacity 0.2s, transform 0.2s",
+              "&:hover": { opacity: 0.88, transform: "translateY(-1px)" },
+              "&:disabled": { opacity: 0.5, background: "linear-gradient(90deg, #8b5cf6, #ec4899)" },
+            }}
+          >
+            {loading ? <CircularProgress size={20} sx={{ color: "#fff" }} /> : "Submit Review"}
+          </Button>
+        </Box>
+      </Box>
+
+      <Snackbar open={success} autoHideDuration={4000} onClose={() => setSuccess(false)} anchorOrigin={{ vertical: "bottom", horizontal: "center" }}>
+        <Alert severity="success" sx={{ background: "rgba(139,92,246,0.15)", color: "#a78bfa", border: "1px solid rgba(139,92,246,0.4)", borderRadius: "12px", fontFamily: "'DM Mono', monospace" }}>
+          Review submitted successfully!
+        </Alert>
+      </Snackbar>
+    </>
   );
 };
 
